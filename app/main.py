@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
         segment_flush_wait=config.event.segment_flush_wait_seconds,
         pre_buffer=config.recorder.pre_buffer_seconds,
         post_buffer=config.recorder.post_buffer_seconds,
-        video_codec=config.recorder.video_codec,
+        video_codec=getattr(config.recorder, "video_codec", "copy"),
         alpr_min_confidence=config.alpr.min_confidence,
     )
     app.state.event_manager = event_manager

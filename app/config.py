@@ -24,6 +24,7 @@ class RecorderConfig(BaseModel):
     retention_minutes: int = 10
     pre_buffer_seconds: int = 3
     post_buffer_seconds: int = 2
+    video_codec: str = "copy"  # "copy", "libx264", oder "h264_qsv"
 
 
 class DetectorConfig(BaseModel):
