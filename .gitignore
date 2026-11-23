@@ -1,0 +1,26 @@
+# Lokale Daten, temporäre Segmente & Mediendateien
+data/
+*.db
+
+# Python Bytecode & virtuelle Umgebungen
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Lokale Konfiguration mit Zugangsdaten / Secrets
+.env
+
+# IDE & Betriebssystem
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

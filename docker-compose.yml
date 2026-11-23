@@ -1,0 +1,35 @@
+services:
+  go2rtc:
+    image: alexxit/go2rtc:latest
+    container_name: go2rtc
+    restart: unless-stopped
+    ports:
+      - "1984:1984"       # Web UI & API
+      - "8554:8554"       # RTSP Server
+      - "8555:8555/tcp"   # WebRTC (TCP)
+      - "8555:8555/udp"   # WebRTC (UDP)
+    volumes:
+      - ./go2rtc.yaml:/config/go2rtc.yaml:ro
+    environment:
+      - LKW_CAM_RTSP=${LKW_CAM_RTSP:-rtsp://admin:password@192.168.1.100:554/h264Preview_01_main}
+      - KALB_CAM_RTSP=${KALB_CAM_RTSP:-rtsp://admin:password@192.168.1.101:554/h264Preview_01_main}
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lkw-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./config.yaml:/app/config.yaml:ro
+      - ./models:/app/models:ro
+    env_file:
+      - .env
+    environment:
+      - TZ=Europe/Berlin
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - go2rtc

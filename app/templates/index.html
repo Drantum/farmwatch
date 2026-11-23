@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LKW-Erkennung & Hofkameras</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Header -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <span class="brand-icon">🚛</span>
+      <div>
+        <h1>Hofkameras & LKW-Erkennung</h1>
+        <p class="subtitle">Automatische Kennzeichen- und Clip-Erfassung</p>
+      </div>
+    </div>
+    <div class="nav-actions">
+      <div id="system-badge" class="badge badge-success">
+        <span class="indicator-dot"></span> System bereit
+      </div>
+      <button id="theme-toggle" class="btn btn-icon" title="Hell/Dunkel umschalten" aria-label="Theme umschalten">
+        🌓
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Live-Kamera Streams -->
+    <section class="section">
+      <div class="section-header">
+        <h2>Live-Ansicht</h2>
+        <span class="refresh-hint">WebRTC Echtzeit-Streaming (< 0.5s Latenz)</span>
+      </div>
+
+      <div class="live-grid">
+        <!-- Kamera Ladefläche -->
+        <div class="camera-card">
+          <div class="card-title">
+            <span class="live-indicator">LIVE</span>
+            <h3>Ladefläche / LKW-Zufahrt</h3>
+          </div>
+          <div class="video-container">
+            <iframe id="stream-lkw" src="" title="Stream LKW Ladefläche" allow="autoplay; fullscreen" loading="lazy"></iframe>
+            <div class="video-fallback" id="fallback-lkw">
+              <span>Stream wird geladen...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kamera Abkalbebox -->
+        <div class="camera-card">
+          <div class="card-title">
+            <span class="live-indicator">LIVE</span>
+            <h3>Abkalbebox</h3>
+          </div>
+          <div class="video-container">
+            <iframe id="stream-kalb" src="" title="Stream Abkalbebox" allow="autoplay; fullscreen" loading="lazy"></iframe>
+            <div class="video-fallback" id="fallback-kalb">
+              <span>Stream wird geladen...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Letzte LKWs / Ereignisse -->
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2>Erfasste LKWs</h2>
+          <span class="refresh-hint" id="refresh-status">Aktualisiert alle 15 Sekunden</span>
+        </div>
+        <button id="manual-refresh-btn" class="btn btn-secondary">
+          🔄 Jetzt aktualisieren
+        </button>
+      </div>
+
+      <!-- LKW Karten Grid -->
+      <div id="events-grid" class="events-grid">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Lade Ereignisse...</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Video Modal / Lightbox -->
+  <div id="video-modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h3 id="modal-title">LKW-Aufnahme</h3>
+          <p id="modal-subtitle" class="subtitle"></p>
+        </div>
+        <button id="modal-close" class="modal-close" aria-label="Schließen">&times;</button>
+      </div>
+      <div class="modal-body">
+        <video id="modal-video" controls autoplay playsinline preload="metadata">
+          <source src="" type="video/mp4">
+          Ihr Browser unterstützt kein HTML5 Video.
+        </video>
+      </div>
+      <div class="modal-footer">
+        <span id="modal-meta-plate" class="plate-badge"></span>
+        <span id="modal-meta-company" class="company-badge"></span>
+        <a id="modal-download-btn" href="#" download class="btn btn-secondary">
+          ⬇ Clip herunterladen
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

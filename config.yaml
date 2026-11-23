@@ -1,0 +1,43 @@
+storage:
+  data_dir: "./data"
+  db_path: "./data/events.db"
+  media_dir: "./data/media"
+  seg_dir: "./data/seg"
+
+stream:
+  # Interner RTSP-Stream von go2rtc
+  rtsp_url: "rtsp://go2rtc:8554/lkw"
+  # Für lokale Entwicklung außerhalb von Docker kann hier z.B. localhost verwendet werden:
+  # rtsp_url: "rtsp://localhost:8554/lkw"
+
+recorder:
+  segment_time: 10          # Dauer jedes Segments in Sekunden
+  retention_minutes: 10     # Ältere Segmente automatisch löschen
+  pre_buffer_seconds: 3     # Vorlauf für Event-Clip
+  post_buffer_seconds: 2    # Nachlauf für Event-Clip
+
+detector:
+  target_fps: 5.0           # Auswertungen pro Sekunde
+  yolo_model: "yolov8n.pt"  # Schlankes Modell für CPU-Inferenz
+  confidence_threshold: 0.45
+  device: "cpu"             # Reiner CPU / Intel iGPU Betrieb
+  target_classes:
+    - "truck"
+
+alpr:
+  detector_model: "yolo-v9-t-384"
+  ocr_model: "cct-s-v2-global-model"
+  min_confidence: 0.35
+  format: "DE"              # Deutsches Kennzeichenformat
+
+event:
+  idle_timeout_seconds: 8.0         # Nach 8s ohne LKW gilt das Ereignis als beendet
+  segment_flush_wait_seconds: 12.0  # Wartezeit vor dem Schneiden, damit Segment finalisiert ist
+
+vision:
+  enabled: false
+  api_base_url: "https://api.openai.com/v1"
+  api_key: ""
+  model: "gpt-4o-mini"
+  timeout_seconds: 15.0
+  prompt: "Identifiziere den Namen der Spedition oder des Transportunternehmens auf diesem Tank-LKW (z.B. Aufschrift auf dem Führerhaus oder Tank). Antworte ausschließlich mit dem Firmennamen oder 'Unbekannt', falls keine Firmenaufschrift lesbar ist."
