@@ -27,6 +27,7 @@ class StreamDetector:
         target_classes: Optional[List[str]] = None,
         alpr_detector_model: str = "yolo-v9-t-384",
         alpr_ocr_model: str = "cct-s-v2-global-model",
+        **kwargs: Any,
     ):
         self.rtsp_url = rtsp_url
         self.event_manager = event_manager

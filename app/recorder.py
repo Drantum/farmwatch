@@ -22,6 +22,7 @@ class StreamRecorder:
         seg_dir: Path,
         segment_time: int = 10,
         retention_minutes: int = 10,
+        **kwargs,
     ):
         self.rtsp_url = rtsp_url
         self.seg_dir = Path(seg_dir)
