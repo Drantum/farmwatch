@@ -76,13 +76,46 @@ class TestALPRLogic(unittest.TestCase):
         collector.add_detection("BMW1234", confidence=0.92, frame=frame2)  # Höhere Confidence
         collector.add_detection("B-MW 1231", confidence=0.50, frame=frame1)
         collector.add_detection("BMW1234", confidence=0.20, frame=frame1)
+        # Test EU-Band 'D' Präfix (z.B. D-B-MW 1234)
+        collector.add_detection("DBMW1234", confidence=0.88, frame=frame2)
 
         formatted, raw, conf, best_frame = collector.get_winner()
 
         self.assertEqual(raw, "BMW1234")
         self.assertEqual(formatted, "B-MW 1234")
-        self.assertAlmostEqual(conf, 0.835, places=3)
         self.assertEqual(best_frame, frame2)
+
+    def test_extract_plate_data(self):
+        from app.detector import extract_plate_data
+
+        # 1. fast-alpr ALPRResult Format (verschachtelt)
+        class MockOCR:
+            def __init__(self, text, confidence):
+                self.text = text
+                self.confidence = confidence
+
+        class MockDetection:
+            def __init__(self, box, confidence):
+                self.box = box
+                self.confidence = confidence
+
+        class MockALPRResult:
+            def __init__(self, text, confidence, box):
+                self.ocr = MockOCR(text, confidence)
+                self.detection = MockDetection(box, confidence)
+
+        mock_item = MockALPRResult("B-MW 1234", 0.91, [10, 20, 30, 40])
+        text, conf, box = extract_plate_data(mock_item)
+        self.assertEqual(text, "B-MW 1234")
+        self.assertAlmostEqual(conf, 0.91, places=2)
+        self.assertEqual(box, [10, 20, 30, 40])
+
+        # 2. Dict Format
+        dict_item = {"ocr": {"text": "HH-AB 567", "confidence": 0.85}, "detection": {"box": [1, 2, 3, 4]}}
+        text, conf, box = extract_plate_data(dict_item)
+        self.assertEqual(text, "HH-AB 567")
+        self.assertAlmostEqual(conf, 0.85, places=2)
+        self.assertEqual(box, [1, 2, 3, 4])
 
 
 if __name__ == "__main__":

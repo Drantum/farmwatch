@@ -1,11 +1,60 @@
+from __future__ import annotations
+
 import logging
 import threading
 import time
 from typing import Any, Dict, List, Optional
-import cv2
-import numpy as np
+
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 logger = logging.getLogger(__name__)
+
+
+def extract_plate_data(item: Any) -> tuple[str, float, Any]:
+    """
+    Liest Text, Confidence und Box aus fast-alpr Rückgabe-Objekten.
+    Unterstützt sowohl ALPRResult(detection, ocr), AlprPrediction als auch dicts.
+    """
+    text = ""
+    conf = 0.0
+    box = None
+
+    if isinstance(item, dict):
+        text = item.get("text") or (item.get("ocr", {}).get("text") if isinstance(item.get("ocr"), dict) else "") or ""
+        conf = item.get("confidence") or (item.get("ocr", {}).get("confidence") if isinstance(item.get("ocr"), dict) else 0.0) or 0.0
+        box = item.get("box") or (item.get("detection", {}).get("box") if isinstance(item.get("detection"), dict) else None)
+    else:
+        # 1. Text
+        if hasattr(item, "text") and getattr(item, "text"):
+            text = str(getattr(item, "text"))
+        elif hasattr(item, "ocr") and hasattr(item.ocr, "text"):
+            text = str(getattr(item.ocr, "text"))
+        elif hasattr(item, "plate") and getattr(item, "plate"):
+            text = str(getattr(item.plate))
+
+        # 2. Confidence
+        if hasattr(item, "confidence") and getattr(item, "confidence") is not None:
+            conf = float(getattr(item, "confidence"))
+        elif hasattr(item, "ocr") and hasattr(item.ocr, "confidence") and item.ocr.confidence is not None:
+            conf = float(getattr(item.ocr, "confidence"))
+        elif hasattr(item, "detection") and hasattr(item.detection, "confidence") and item.detection.confidence is not None:
+            conf = float(getattr(item.detection, "confidence"))
+
+        # 3. Bounding Box
+        if hasattr(item, "box"):
+            box = getattr(item, "box")
+        elif hasattr(item, "detection") and hasattr(item.detection, "box"):
+            box = getattr(item.detection, "box")
+
+    return text.strip(), conf, box
 
 
 class StreamDetector:
@@ -234,45 +283,6 @@ class StreamDetector:
                         max_conf = conf
 
         return truck_found, max_conf
-
-def extract_plate_data(item: Any) -> tuple[str, float, Any]:
-    """
-    Liest Text, Confidence und Box aus fast-alpr Rückgabe-Objekten.
-    Unterstützt sowohl ALPRResult(detection, ocr), AlprPrediction als auch dicts.
-    """
-    text = ""
-    conf = 0.0
-    box = None
-
-    if isinstance(item, dict):
-        text = item.get("text") or (item.get("ocr", {}).get("text") if isinstance(item.get("ocr"), dict) else "") or ""
-        conf = item.get("confidence") or (item.get("ocr", {}).get("confidence") if isinstance(item.get("ocr"), dict) else 0.0) or 0.0
-        box = item.get("box") or (item.get("detection", {}).get("box") if isinstance(item.get("detection"), dict) else None)
-    else:
-        # 1. Text
-        if hasattr(item, "text") and getattr(item, "text"):
-            text = str(getattr(item, "text"))
-        elif hasattr(item, "ocr") and hasattr(item.ocr, "text"):
-            text = str(getattr(item.ocr, "text"))
-        elif hasattr(item, "plate") and getattr(item, "plate"):
-            text = str(getattr(item.plate))
-
-        # 2. Confidence
-        if hasattr(item, "confidence") and getattr(item, "confidence") is not None:
-            conf = float(getattr(item, "confidence"))
-        elif hasattr(item, "ocr") and hasattr(item.ocr, "confidence") and item.ocr.confidence is not None:
-            conf = float(getattr(item.ocr, "confidence"))
-        elif hasattr(item, "detection") and hasattr(item.detection, "confidence") and item.detection.confidence is not None:
-            conf = float(getattr(item.detection, "confidence"))
-
-        # 3. Bounding Box
-        if hasattr(item, "box"):
-            box = getattr(item, "box")
-        elif hasattr(item, "detection") and hasattr(item.detection, "box"):
-            box = getattr(item.detection, "box")
-
-    return text.strip(), conf, box
-
 
     def _detect_plates(self, frame: np.ndarray) -> List[Dict[str, Any]]:
         """Führt fast-alpr Kennzeichenerkennung auf dem Frame durch."""
