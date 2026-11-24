@@ -64,13 +64,19 @@
             <div class="stream-modes">
               <button type="button" class="mode-btn active" data-stream="kalb" data-mode="mse" title="Media Source Extensions (Empfohlen, läuft über Port 1984)">MSE</button>
               <button type="button" class="mode-btn" data-stream="kalb" data-mode="webrtc" title="WebRTC (Sub-Sekunden Latenz)">WebRTC</button>
+              <button type="button" class="mode-btn ai-btn" data-stream="kalb" data-mode="ai" title="KI-Erkennung mit Bounding-Boxes (COLO / YOLO Tracking)">🎯 KI Boxen</button>
             </div>
           </div>
           <div class="video-container">
             <iframe id="stream-kalb" src="" title="Stream Abkalbebox" allow="autoplay; fullscreen"></iframe>
+            <img id="stream-kalb-ai" class="ai-video-feed" src="" alt="KI Tracking Abkalbebox" style="display: none; width: 100%; height: 100%; object-fit: contain; background: #0b0f19;">
             <div class="video-fallback" id="fallback-kalb">
               <span>Stream wird geladen...</span>
             </div>
+          </div>
+          <div class="stream-info-bar" id="kalb-info-bar" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; font-size: 0.8rem; color: var(--text-muted); background: var(--card-bg); border-top: 1px solid var(--border-color);">
+            <span id="kalb-cows-badge">🐮 Kühe im Stall: --</span>
+            <span id="kalb-model-badge">Modell: --</span>
           </div>
         </div>
       </div>

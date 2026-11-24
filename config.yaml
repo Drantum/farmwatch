@@ -41,3 +41,15 @@ vision:
   model: "gpt-4o-mini"
   timeout_seconds: 15.0
   prompt: "Identifiziere den Namen der Spedition oder des Transportunternehmens auf diesem Tank-LKW (z.B. Aufschrift auf dem Führerhaus oder Tank). Antworte ausschließlich mit dem Firmennamen oder 'Unbekannt', falls keine Firmenaufschrift lesbar ist."
+
+cow_detector:
+  enabled: true
+  rtsp_url: "rtsp://go2rtc:8554/kalb"       # Stream der Abkalbebox
+  model_path: "models/colo_cow.pt"          # Eigene Gewichte (z.B. COLO) oder automatisch Fallback auf yolov8n.pt
+  confidence_threshold: 0.35                # Mindest-Wahrscheinlichkeit
+  target_fps: 5.0                           # 5 Bilder/Sekunde
+  device: "cpu"                             # "cpu" oder "cuda"
+  track: true                               # Objekt-Tracking (ByteTrack) für konsistente Kuh-IDs
+  target_classes:
+    - "cow"                                 # COCO-Klasse oder Custom-Klasse
+  models_dir: "./models"

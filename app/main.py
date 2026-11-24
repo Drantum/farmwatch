@@ -5,8 +5,9 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import events, status
+from app.api import events, status, cows
 from app.config import load_config
+from app.cow_detector import CowDetector
 from app.database import Database
 from app.detector import StreamDetector
 from app.event_manager import EventManager
@@ -91,11 +92,34 @@ async def lifespan(app: FastAPI):
         logger.error(f"Fehler beim Starten des Detektors: {e}")
         app.state.detector = None
 
+    # 6. Kuh-Detektor für Abkalbebox (COLO / Eigene Modelle & Bounding-Boxes)
+    if getattr(config, "cow_detector", None) and config.cow_detector.enabled:
+        try:
+            cow_detector = CowDetector(
+                rtsp_url=config.cow_detector.rtsp_url,
+                model_path=config.cow_detector.model_path,
+                confidence_threshold=config.cow_detector.confidence_threshold,
+                target_fps=config.cow_detector.target_fps,
+                device=config.cow_detector.device,
+                track=config.cow_detector.track,
+                target_classes=config.cow_detector.target_classes,
+                models_dir=config.cow_detector.models_dir,
+            )
+            cow_detector.start()
+            app.state.cow_detector = cow_detector
+        except Exception as e:
+            logger.error(f"Fehler beim Starten des Kuh-Detektors: {e}")
+            app.state.cow_detector = None
+    else:
+        app.state.cow_detector = None
+
     logger.info("System bereit und aktiv.")
     yield
 
     # Shutdown
     logger.info("Fahre System herunter...")
+    if getattr(app.state, "cow_detector", None):
+        app.state.cow_detector.stop()
     if getattr(app.state, "detector", None):
         app.state.detector.stop()
     if getattr(app.state, "recorder", None):
@@ -122,6 +146,7 @@ app.mount("/media", StaticFiles(directory=str(cfg.storage.media_dir)), name="med
 # API Router einbinden
 app.include_router(events.router)
 app.include_router(status.router)
+app.include_router(cows.router)
 
 
 @app.get("/", response_class=HTMLResponse)

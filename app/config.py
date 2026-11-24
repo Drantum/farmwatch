@@ -1,7 +1,10 @@
 import os
 from pathlib import Path
 from typing import List, Optional
-import yaml
+try:
+    import yaml
+except ImportError:
+    yaml = None
 from pydantic import BaseModel, Field
 
 
@@ -60,6 +63,18 @@ class VisionConfig(BaseModel):
     )
 
 
+class CowDetectorConfig(BaseModel):
+    enabled: bool = True
+    rtsp_url: str = "rtsp://go2rtc:8554/kalb"
+    model_path: str = "models/colo_cow.pt"
+    confidence_threshold: float = 0.35
+    target_fps: float = 5.0
+    device: str = "cpu"
+    track: bool = True
+    target_classes: List[str] = Field(default_factory=lambda: ["cow"])
+    models_dir: str = "./models"
+
+
 class AppConfig(BaseModel):
     storage: StorageConfig = Field(default_factory=StorageConfig)
     stream: StreamConfig = Field(default_factory=StreamConfig)
@@ -68,6 +83,7 @@ class AppConfig(BaseModel):
     alpr: ALPRConfig = Field(default_factory=ALPRConfig)
     event: EventConfig = Field(default_factory=EventConfig)
     vision: VisionConfig = Field(default_factory=VisionConfig)
+    cow_detector: CowDetectorConfig = Field(default_factory=CowDetectorConfig)
 
 
 def load_config(config_path: Optional[str] = None) -> AppConfig:
@@ -110,6 +126,14 @@ def load_config(config_path: Optional[str] = None) -> AppConfig:
         config.vision.api_key = os.getenv("VISION_API_KEY")
     if os.getenv("VISION_MODEL"):
         config.vision.model = os.getenv("VISION_MODEL")
+
+    # Cow Detector Umgebungsvariablen
+    if os.getenv("COW_DETECTOR_ENABLED") is not None:
+        config.cow_detector.enabled = os.getenv("COW_DETECTOR_ENABLED").strip().lower() in ("true", "1", "yes")
+    if os.getenv("COW_RTSP_URL"):
+        config.cow_detector.rtsp_url = os.getenv("COW_RTSP_URL")
+    if os.getenv("COW_MODEL_PATH"):
+        config.cow_detector.model_path = os.getenv("COW_MODEL_PATH")
 
     # Verzeichnisse anlegen
     config.storage.data_dir.mkdir(parents=True, exist_ok=True)

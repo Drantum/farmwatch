@@ -247,6 +247,12 @@ body {
   border-color: var(--brand-primary);
 }
 
+.mode-btn.ai-btn.active {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+
 .live-indicator {
   background-color: var(--danger);
   color: #fff;

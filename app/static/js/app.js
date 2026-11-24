@@ -45,11 +45,15 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("theme", newTheme);
   });
 
-  // 2. go2rtc Streams einbinden (Standard: MSE über Port 1984 für sofortigen Start ohne WebRTC-Port-Probleme)
+  // 2. go2rtc Streams & KI-Feed einbinden
   const streamModes = {
     lkw: "mse",
     kalb: "mse",
   };
+
+  const streamKalbAi = document.getElementById("stream-kalb-ai");
+  const kalbCowsBadge = document.getElementById("kalb-cows-badge");
+  const kalbModelBadge = document.getElementById("kalb-model-badge");
 
   function updateStreamUrl(name) {
     const iframe = name === "lkw" ? streamLkw : streamKalb;
@@ -57,6 +61,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const mode = streamModes[name] || "mse";
 
     if (!iframe) return;
+
+    if (name === "kalb" && mode === "ai") {
+      // KI-Modus mit Bounding-Boxes
+      iframe.style.display = "none";
+      iframe.src = "";
+      if (streamKalbAi) {
+        streamKalbAi.style.display = "block";
+        streamKalbAi.src = "/api/cows/live?t=" + Date.now();
+      }
+      if (fallback) fallback.style.display = "none";
+      updateCowStatus();
+      return;
+    }
+
+    if (name === "kalb") {
+      if (streamKalbAi) {
+        streamKalbAi.style.display = "none";
+        streamKalbAi.src = "";
+      }
+      iframe.style.display = "block";
+    }
 
     // stream.html mit explizitem Modus aufrufen
     const url = `http://${host}:${go2rtcPort}/stream.html?src=${name}&mode=${mode}`;
@@ -71,11 +96,39 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 1500);
   }
 
+  async function updateCowStatus() {
+    try {
+      const res = await fetch("/api/cows/status");
+      if (!res.ok) return;
+      const data = await res.json();
+      if (kalbCowsBadge) {
+        if (data.cows_detected > 0) {
+          kalbCowsBadge.textContent = `🐮 ${data.cows_detected} ${data.cows_detected === 1 ? 'Kuh' : 'Kühe'} erfasst`;
+          kalbCowsBadge.style.color = "var(--success, #22c55e)";
+          kalbCowsBadge.style.fontWeight = "600";
+        } else {
+          kalbCowsBadge.textContent = "🐮 Keine Kuh im Fokus";
+          kalbCowsBadge.style.color = "var(--text-muted)";
+          kalbCowsBadge.style.fontWeight = "normal";
+        }
+      }
+      if (kalbModelBadge) {
+        const mName = data.model_path ? data.model_path.split("/").pop().split("\\").pop() : "yolov8n.pt";
+        const tag = data.is_custom_model ? "Custom/COLO" : "COCO";
+        kalbModelBadge.textContent = `${mName} (${tag})`;
+      }
+    } catch (e) {
+      // Still ignorieren
+    }
+  }
+
   function initStreams() {
     updateStreamUrl("lkw");
     updateStreamUrl("kalb");
+    updateCowStatus();
+    setInterval(updateCowStatus, 5000);
 
-    // Umschalter für Streaming-Modus (MSE / WebRTC)
+    // Umschalter für Streaming-Modus (MSE / WebRTC / KI)
     document.querySelectorAll(".mode-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const stream = btn.getAttribute("data-stream");
