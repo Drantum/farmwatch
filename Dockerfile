@@ -20,6 +20,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# Standard-KI-Modelle vorab herunterladen, damit der Container sofort einsatzbereit ist
+RUN python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')" || true
+RUN python -c "from fast_alpr import ALPR; ALPR(detector_model='yolo-v9-t-384-license-plate-end2end', ocr_model='cct-s-v2-global-model')" || true
+
 # Anwendungs-Code kopieren
 COPY app/ ./app/
 COPY config.yaml ./config.yaml

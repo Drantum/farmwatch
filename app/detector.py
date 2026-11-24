@@ -74,7 +74,7 @@ class StreamDetector:
         confidence_threshold: float = 0.45,
         device: str = "cpu",
         target_classes: Optional[List[str]] = None,
-        alpr_detector_model: str = "yolo-v9-t-384",
+        alpr_detector_model: str = "yolo-v9-t-384-license-plate-end2end",
         alpr_ocr_model: str = "cct-s-v2-global-model",
         **kwargs: Any,
     ):
@@ -156,12 +156,32 @@ class StreamDetector:
             logger.error(f"❌ Konnte YOLO nicht laden ({e}). LKW-Erkennung inaktiv!", exc_info=True)
 
         try:
+            import os
             from fast_alpr import ALPR
-            logger.info(f"Lade fast-alpr ONNX-Modelle (Detector: {self.alpr_detector_model}, OCR: {self.alpr_ocr_model})...")
-            self.alpr = ALPR(
-                detector_model=self.alpr_detector_model,
-                ocr_model=self.alpr_ocr_model,
-            )
+            detector_model = self.alpr_detector_model
+            # Automatische Ergänzung bei Kurznamen wie "yolo-v9-t-384"
+            if detector_model and not os.path.exists(detector_model):
+                if detector_model in ("yolo-v9-t-384", "yolov9-t-384"):
+                    detector_model = "yolo-v9-t-384-license-plate-end2end"
+                elif not detector_model.endswith("-license-plate-end2end") and detector_model.startswith("yolo-v9-"):
+                    detector_model = f"{detector_model}-license-plate-end2end"
+
+            logger.info(f"Lade fast-alpr ONNX-Modelle (Detector: {detector_model}, OCR: {self.alpr_ocr_model})...")
+            try:
+                self.alpr = ALPR(
+                    detector_model=detector_model,
+                    ocr_model=self.alpr_ocr_model,
+                )
+            except FileNotFoundError as fnf_err:
+                fallback_detector = "yolo-v9-t-384-license-plate-end2end"
+                if detector_model != fallback_detector:
+                    logger.warning(f"Konnte Detector '{detector_model}' nicht finden ({fnf_err}). Versuche Standard-Modell '{fallback_detector}'...")
+                    self.alpr = ALPR(
+                        detector_model=fallback_detector,
+                        ocr_model=self.alpr_ocr_model,
+                    )
+                else:
+                    raise
             logger.info("fast-alpr erfolgreich initialisiert und bereit!")
         except Exception as e:
             self.alpr_load_error = str(e)

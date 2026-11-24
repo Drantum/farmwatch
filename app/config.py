@@ -36,7 +36,7 @@ class DetectorConfig(BaseModel):
 
 
 class ALPRConfig(BaseModel):
-    detector_model: str = "yolo-v9-t-384"
+    detector_model: str = "yolo-v9-t-384-license-plate-end2end"
     ocr_model: str = "cct-s-v2-global-model"
     min_confidence: float = 0.35
     format: str = "DE"

@@ -25,7 +25,7 @@ detector:
     - "truck"
 
 alpr:
-  detector_model: "yolo-v9-t-384"
+  detector_model: "yolo-v9-t-384-license-plate-end2end"
   ocr_model: "cct-s-v2-global-model"
   min_confidence: 0.35
   format: "DE"              # Deutsches Kennzeichenformat
