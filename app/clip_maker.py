@@ -75,10 +75,14 @@ def build_event_clip(
     segment_duration: float = 10.0,
     pre_buffer: float = 3.0,
     post_buffer: float = 2.0,
+    video_codec: str = "copy",
+    **kwargs,
 ) -> bool:
     """
-    Kopiert und fügt die relevanten Segmente verlustfrei mittels ffmpeg concat zusammen.
-    Gibt True bei Erfolg zurück.
+    Kopiert oder transkodiert die relevanten Segmente mittels ffmpeg concat.
+    - video_codec='copy': Verlustfrei, 0% CPU-Last (Original-Codec der Kamera)
+    - video_codec='libx264': Transkodiert zu H.264 für maximale Browser-Kompatibilität
+    - video_codec='h264_qsv': Hardware-beschleunigtes H.264 über Intel iGPU
     """
     matching_segments = find_matching_segments(
         seg_dir=seg_dir,
@@ -106,16 +110,25 @@ def build_event_clip(
             f.write(f"file '{clean_path}'\n")
 
     try:
+        codec_args = ["-c", "copy"]
+        if video_codec and video_codec != "copy":
+            codec_args = ["-c:v", video_codec]
+            if video_codec == "libx264":
+                codec_args.extend(["-preset", "veryfast", "-crf", "23"])
+            elif video_codec == "h264_qsv":
+                codec_args.extend(["-global_quality", "25"])
+            codec_args.extend(["-c:a", "copy"])
+
         cmd = [
             "ffmpeg",
             "-y",
             "-f", "concat",
             "-safe", "0",
             "-i", str(temp_list_path),
-            "-c", "copy",
+            *codec_args,
             str(output_path),
         ]
-        logger.info(f"Führe ffmpeg Concat für {len(matching_segments)} Segmente aus...")
+        logger.info(f"Führe ffmpeg Concat (Codec: {video_codec}) für {len(matching_segments)} Segmente aus...")
         result = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,

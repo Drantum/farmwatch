@@ -38,7 +38,9 @@ class EventManager:
         segment_flush_wait: float = 12.0,
         pre_buffer: float = 3.0,
         post_buffer: float = 2.0,
+        video_codec: str = "copy",
         alpr_min_confidence: float = 0.35,
+        **kwargs: Any,
     ):
         self.db = db
         self.media_dir = Path(media_dir)
@@ -48,6 +50,7 @@ class EventManager:
         self.segment_flush_wait = segment_flush_wait
         self.pre_buffer = pre_buffer
         self.post_buffer = post_buffer
+        self.video_codec = video_codec
         self.alpr_min_confidence = alpr_min_confidence
 
         self._lock = threading.Lock()
@@ -167,6 +170,7 @@ class EventManager:
                 end_time=end_ts,
                 pre_buffer=self.pre_buffer,
                 post_buffer=self.post_buffer,
+                video_codec=getattr(self, "video_codec", "copy"),
             )
             if not clip_success:
                 clip_filename = ""
