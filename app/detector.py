@@ -50,6 +50,8 @@ class StreamDetector:
 
         self.yolo_model = None
         self.alpr = None
+        self.yolo_load_error: Optional[str] = None
+        self.alpr_load_error: Optional[str] = None
 
         self.fps_measured: float = 0.0
         self.is_connected: bool = False
@@ -84,26 +86,37 @@ class StreamDetector:
             "fps_measured": round(self.fps_measured, 1),
             "device": self.device,
             "yolo_model": self.yolo_model_name,
+            "yolo_loaded": self.yolo_model is not None,
+            "yolo_error": self.yolo_load_error,
+            "alpr_loaded": self.alpr is not None,
+            "alpr_error": self.alpr_load_error,
         }
 
     def _load_models(self) -> None:
         """Lädt YOLO und fast-alpr fehlertolerant."""
+        self.yolo_load_error = None
+        self.alpr_load_error = None
+
         try:
             from ultralytics import YOLO
             logger.info(f"Lade YOLO-Modell ({self.yolo_model_name}) auf {self.device}...")
             self.yolo_model = YOLO(self.yolo_model_name)
+            logger.info("YOLO-Modell erfolgreich geladen!")
         except Exception as e:
-            logger.error(f"Konnte YOLO nicht laden ({e}). Erkennung wird pausiert.")
+            self.yolo_load_error = str(e)
+            logger.error(f"❌ Konnte YOLO nicht laden ({e}). LKW-Erkennung inaktiv!", exc_info=True)
 
         try:
             from fast_alpr import ALPR
-            logger.info("Lade fast-alpr ONNX-Modelle...")
+            logger.info(f"Lade fast-alpr ONNX-Modelle (Detector: {self.alpr_detector_model}, OCR: {self.alpr_ocr_model})...")
             self.alpr = ALPR(
                 detector_model=self.alpr_detector_model,
                 ocr_model=self.alpr_ocr_model,
             )
+            logger.info("fast-alpr erfolgreich initialisiert und bereit!")
         except Exception as e:
-            logger.warning(f"Konnte fast-alpr nicht laden ({e}). ALPR wird simuliert oder übersprungen.")
+            self.alpr_load_error = str(e)
+            logger.error(f"❌ Konnte fast-alpr nicht laden: {e}. ALPR-Erkennung ist inaktiv!", exc_info=True)
 
     def _run_frame_grabber(self) -> None:
         """
@@ -222,17 +235,56 @@ class StreamDetector:
 
         return truck_found, max_conf
 
+def extract_plate_data(item: Any) -> tuple[str, float, Any]:
+    """
+    Liest Text, Confidence und Box aus fast-alpr Rückgabe-Objekten.
+    Unterstützt sowohl ALPRResult(detection, ocr), AlprPrediction als auch dicts.
+    """
+    text = ""
+    conf = 0.0
+    box = None
+
+    if isinstance(item, dict):
+        text = item.get("text") or (item.get("ocr", {}).get("text") if isinstance(item.get("ocr"), dict) else "") or ""
+        conf = item.get("confidence") or (item.get("ocr", {}).get("confidence") if isinstance(item.get("ocr"), dict) else 0.0) or 0.0
+        box = item.get("box") or (item.get("detection", {}).get("box") if isinstance(item.get("detection"), dict) else None)
+    else:
+        # 1. Text
+        if hasattr(item, "text") and getattr(item, "text"):
+            text = str(getattr(item, "text"))
+        elif hasattr(item, "ocr") and hasattr(item.ocr, "text"):
+            text = str(getattr(item.ocr, "text"))
+        elif hasattr(item, "plate") and getattr(item, "plate"):
+            text = str(getattr(item.plate))
+
+        # 2. Confidence
+        if hasattr(item, "confidence") and getattr(item, "confidence") is not None:
+            conf = float(getattr(item, "confidence"))
+        elif hasattr(item, "ocr") and hasattr(item.ocr, "confidence") and item.ocr.confidence is not None:
+            conf = float(getattr(item.ocr, "confidence"))
+        elif hasattr(item, "detection") and hasattr(item.detection, "confidence") and item.detection.confidence is not None:
+            conf = float(getattr(item.detection, "confidence"))
+
+        # 3. Bounding Box
+        if hasattr(item, "box"):
+            box = getattr(item, "box")
+        elif hasattr(item, "detection") and hasattr(item.detection, "box"):
+            box = getattr(item.detection, "box")
+
+    return text.strip(), conf, box
+
+
     def _detect_plates(self, frame: np.ndarray) -> List[Dict[str, Any]]:
         """Führt fast-alpr Kennzeichenerkennung auf dem Frame durch."""
         plates = []
         try:
             results = self.alpr.predict(frame)
+            if results:
+                logger.info(f"🔍 fast-alpr: {len(results)} Kennzeichen-Kandidat(en) im Frame gefunden.")
             for item in results:
-                # Fast-ALPR liefert Vorhersagen mit text und confidence
-                text = getattr(item, "text", "") or ""
-                conf = float(getattr(item, "confidence", 0.0) or 0.0)
-                box = getattr(item, "box", None)
+                text, conf, box = extract_plate_data(item)
+                logger.info(f"   📋 fast-alpr Roh-Erkennung: '{text}' (Confidence: {conf:.2f}, Box: {box})")
                 plates.append({"text": text, "confidence": conf, "box": box})
         except Exception as e:
-            logger.warning(f"Fehler bei fast-alpr Erkennung: {e}")
+            logger.error(f"Fehler bei fast-alpr Erkennung: {e}", exc_info=True)
         return plates

@@ -1,5 +1,8 @@
+import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 try:
     import numpy as np
@@ -181,15 +184,22 @@ class PlateVoteCollector:
         Gibt True zurück, wenn es akzeptiert wurde.
         """
         if confidence < self.min_confidence:
+            logger.info(f"   [ALPR] Gelesen: '{raw_text}' | ❌ Ignoriert (Confidence {confidence:.2f} < Min {self.min_confidence:.2f})")
             return False
 
+        # Merke Fallback-Bild
         if frame is not None and confidence > self.fallback_confidence:
             self.fallback_frame = _copy_frame(frame)
             self.fallback_confidence = confidence
 
         cleaned = clean_plate_text(raw_text)
         if not is_valid_german_plate(cleaned):
-            return False
+            # Prüfen, ob führendes EU-Band 'D' gelesen wurde (z.B. D-BMW 1234 -> BMW 1234)
+            if cleaned.startswith("D") and len(cleaned) > 4 and is_valid_german_plate(cleaned[1:]):
+                cleaned = cleaned[1:]
+            else:
+                logger.info(f"   [ALPR] Gelesen: '{raw_text}' (bereinigt: '{cleaned}', Conf: {confidence:.2f}) | ⚠️ Kein gültiges deutsches Kennzeichen-Format")
+                return False
 
         if cleaned not in self.votes:
             self.votes[cleaned] = {
@@ -214,6 +224,7 @@ class PlateVoteCollector:
             if "-" in raw_text or " " in raw_text or not entry.get("hint_raw"):
                 entry["hint_raw"] = raw_text
 
+        logger.info(f"   [ALPR] Gelesen: '{raw_text}' -> '{cleaned}' | ✅ AKZEPTIERT (Score: {entry['score']:.2f}, Treffer: {entry['count']})")
         return True
 
     def get_winner(self) -> Tuple[Optional[str], Optional[str], float, Optional[Any]]:
