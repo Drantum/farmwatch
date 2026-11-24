@@ -45,21 +45,49 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("theme", newTheme);
   });
 
-  // 2. go2rtc Streams einbinden
+  // 2. go2rtc Streams einbinden (Standard: MSE über Port 1984 für sofortigen Start ohne WebRTC-Port-Probleme)
+  const streamModes = {
+    lkw: "mse",
+    kalb: "mse",
+  };
+
+  function updateStreamUrl(name) {
+    const iframe = name === "lkw" ? streamLkw : streamKalb;
+    const fallback = name === "lkw" ? fallbackLkw : fallbackKalb;
+    const mode = streamModes[name] || "mse";
+
+    if (!iframe) return;
+
+    // stream.html mit explizitem Modus aufrufen
+    const url = `http://${host}:${go2rtcPort}/stream.html?src=${name}&mode=${mode}`;
+    iframe.src = url;
+
+    iframe.onload = () => {
+      if (fallback) fallback.style.display = "none";
+    };
+    // Zusätzlicher Fallback-Timer zur Sicherheit
+    setTimeout(() => {
+      if (fallback) fallback.style.display = "none";
+    }, 1500);
+  }
+
   function initStreams() {
-    // go2rtc Stream Player via WebRTC
-    const lkwUrl = `http://${host}:${go2rtcPort}/webrtc.html?src=lkw&media=video`;
-    const kalbUrl = `http://${host}:${go2rtcPort}/webrtc.html?src=kalb&media=video`;
+    updateStreamUrl("lkw");
+    updateStreamUrl("kalb");
 
-    streamLkw.src = lkwUrl;
-    streamKalb.src = kalbUrl;
-
-    streamLkw.onload = () => {
-      if (fallbackLkw) fallbackLkw.style.display = "none";
-    };
-    streamKalb.onload = () => {
-      if (fallbackKalb) fallbackKalb.style.display = "none";
-    };
+    // Umschalter für Streaming-Modus (MSE / WebRTC)
+    document.querySelectorAll(".mode-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const stream = btn.getAttribute("data-stream");
+        const mode = btn.getAttribute("data-mode");
+        if (stream && mode) {
+          streamModes[stream] = mode;
+          btn.closest(".stream-modes").querySelectorAll(".mode-btn").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          updateStreamUrl(stream);
+        }
+      });
+    });
   }
 
   // 3. Ereignisse laden (/api/events)

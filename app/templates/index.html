@@ -43,9 +43,13 @@
           <div class="card-title">
             <span class="live-indicator">LIVE</span>
             <h3>Ladefläche / LKW-Zufahrt</h3>
+            <div class="stream-modes">
+              <button type="button" class="mode-btn active" data-stream="lkw" data-mode="mse" title="Media Source Extensions (Empfohlen, läuft über Port 1984)">MSE</button>
+              <button type="button" class="mode-btn" data-stream="lkw" data-mode="webrtc" title="WebRTC (Sub-Sekunden Latenz)">WebRTC</button>
+            </div>
           </div>
           <div class="video-container">
-            <iframe id="stream-lkw" src="" title="Stream LKW Ladefläche" allow="autoplay; fullscreen" loading="lazy"></iframe>
+            <iframe id="stream-lkw" src="" title="Stream LKW Ladefläche" allow="autoplay; fullscreen"></iframe>
             <div class="video-fallback" id="fallback-lkw">
               <span>Stream wird geladen...</span>
             </div>
@@ -57,9 +61,13 @@
           <div class="card-title">
             <span class="live-indicator">LIVE</span>
             <h3>Abkalbebox</h3>
+            <div class="stream-modes">
+              <button type="button" class="mode-btn active" data-stream="kalb" data-mode="mse" title="Media Source Extensions (Empfohlen, läuft über Port 1984)">MSE</button>
+              <button type="button" class="mode-btn" data-stream="kalb" data-mode="webrtc" title="WebRTC (Sub-Sekunden Latenz)">WebRTC</button>
+            </div>
           </div>
           <div class="video-container">
-            <iframe id="stream-kalb" src="" title="Stream Abkalbebox" allow="autoplay; fullscreen" loading="lazy"></iframe>
+            <iframe id="stream-kalb" src="" title="Stream Abkalbebox" allow="autoplay; fullscreen"></iframe>
             <div class="video-fallback" id="fallback-kalb">
               <span>Stream wird geladen...</span>
             </div>
