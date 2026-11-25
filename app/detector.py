@@ -17,6 +17,11 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+def _to_conf(value):
+    """Wandelt eine Confidence (Zahl oder Liste pro Zeichen) in einen Float um."""
+    if isinstance(value, (list, tuple)):
+        return min(value) if value else 0.0   # strenger: schwächstes Zeichen zählt
+    return float(value)
 
 def extract_plate_data(item: Any) -> tuple[str, float, Any]:
     """
@@ -40,14 +45,14 @@ def extract_plate_data(item: Any) -> tuple[str, float, Any]:
         elif hasattr(item, "plate") and getattr(item, "plate"):
             text = str(getattr(item.plate))
 
-        # 2. Confidence
+         # 2. Confidence
         if hasattr(item, "confidence") and getattr(item, "confidence") is not None:
-            conf = float(getattr(item, "confidence"))
+            conf = _to_conf(item.confidence)
         elif hasattr(item, "ocr") and hasattr(item.ocr, "confidence") and item.ocr.confidence is not None:
-            conf = float(getattr(item.ocr, "confidence"))
+            conf = _to_conf(item.ocr.confidence)
         elif hasattr(item, "detection") and hasattr(item.detection, "confidence") and item.detection.confidence is not None:
-            conf = float(getattr(item.detection, "confidence"))
-
+            conf = _to_conf(item.detection.confidence)
+       
         # 3. Bounding Box
         if hasattr(item, "box"):
             box = getattr(item, "box")
