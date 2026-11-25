@@ -3,130 +3,182 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LKW-Erkennung & Hofkameras</title>
-  <link rel="stylesheet" href="/static/css/style.css">
+  <title>FarmWatch – Hofkameras & LKW-Erkennung</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-  <!-- Header -->
-  <header class="navbar">
-    <div class="nav-brand">
-      <span class="brand-icon">🚛</span>
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <span class="sidebar-logo">🏠</span>
       <div>
-        <h1>Hofkameras & LKW-Erkennung</h1>
-        <p class="subtitle">Automatische Kennzeichen- und Clip-Erfassung</p>
+        <h1>FarmWatch</h1>
+        <span class="sidebar-subtitle">Hofüberwachung</span>
       </div>
     </div>
-    <div class="nav-actions">
-      <div id="system-badge" class="badge badge-success">
-        <span class="indicator-dot"></span> System bereit
+
+    <nav class="sidebar-nav">
+      <a href="#live" class="nav-item active" data-page="live">
+        <span class="nav-icon">📹</span>
+        <span>Live Kameras</span>
+      </a>
+      <a href="#aufnahmen" class="nav-item" data-page="aufnahmen">
+        <span class="nav-icon">🚛</span>
+        <span>Aufnahmen</span>
+      </a>
+      <a href="#abkalben" class="nav-item" data-page="abkalben">
+        <span class="nav-icon">🐮</span>
+        <span>Abkalben</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="system-status" id="system-status">
+        <span class="status-dot online"></span>
+        <span class="status-text">System online</span>
       </div>
-      <button id="theme-toggle" class="btn btn-icon" title="Hell/Dunkel umschalten" aria-label="Theme umschalten">
-        🌓
-      </button>
+      <button id="theme-toggle" class="sidebar-btn" title="Farbmodus umschalten">🌓</button>
     </div>
+  </aside>
+
+  <!-- Mobile Top Bar -->
+  <header class="mobile-topbar" id="mobile-topbar">
+    <button class="hamburger" id="hamburger">☰</button>
+    <span class="mobile-title">FarmWatch</span>
+    <button id="theme-toggle-mobile" class="sidebar-btn" title="Farbmodus umschalten">🌓</button>
   </header>
 
-  <main class="container">
-    <!-- Live-Kamera Streams -->
-    <section class="section">
-      <div class="section-header">
-        <h2>Live-Ansicht</h2>
-        <span class="refresh-hint">WebRTC Echtzeit-Streaming (< 0.5s Latenz)</span>
+  <!-- Main Content Area -->
+  <main class="main-content" id="main-content">
+
+    <!-- ===== PAGE: Live Kameras ===== -->
+    <section class="page" id="page-live">
+      <div class="page-header">
+        <h2>Live Kameras</h2>
+        <div class="header-actions">
+          <span class="badge badge-success" id="system-badge">
+            <span class="indicator-dot"></span>
+            <span id="system-badge-text">Online</span>
+          </span>
+        </div>
       </div>
 
       <div class="live-grid">
-        <!-- Kamera Ladefläche -->
+        <!-- Kamera LKW Ladefläche -->
         <div class="camera-card">
-          <div class="card-title">
-            <span class="live-indicator">LIVE</span>
-            <h3>Ladefläche / LKW-Zufahrt</h3>
+          <div class="card-header">
+            <div class="card-header-left">
+              <span class="live-dot"></span>
+              <h3>LKW Ladefläche</h3>
+            </div>
             <div class="stream-modes">
-              <button type="button" class="mode-btn active" data-stream="lkw" data-mode="mse" title="Media Source Extensions (Empfohlen, läuft über Port 1984)">MSE</button>
-              <button type="button" class="mode-btn" data-stream="lkw" data-mode="webrtc" title="WebRTC (Sub-Sekunden Latenz)">WebRTC</button>
+              <button type="button" class="mode-btn active" data-stream="lkw" data-mode="mse">MSE</button>
+              <button type="button" class="mode-btn" data-stream="lkw" data-mode="webrtc">WebRTC</button>
             </div>
           </div>
           <div class="video-container">
-            <iframe id="stream-lkw" src="" title="Stream LKW Ladefläche" allow="autoplay; fullscreen"></iframe>
-            <div class="video-fallback" id="fallback-lkw">
-              <span>Stream wird geladen...</span>
-            </div>
+            <iframe id="stream-lkw" src="" title="Stream LKW" allow="autoplay; fullscreen"></iframe>
+            <div class="video-fallback" id="fallback-lkw"><span>Stream wird geladen…</span></div>
           </div>
         </div>
 
         <!-- Kamera Abkalbebox -->
         <div class="camera-card">
-          <div class="card-title">
-            <span class="live-indicator">LIVE</span>
-            <h3>Abkalbebox</h3>
+          <div class="card-header">
+            <div class="card-header-left">
+              <span class="live-dot"></span>
+              <h3>Abkalbebox</h3>
+            </div>
             <div class="stream-modes">
-              <button type="button" class="mode-btn active" data-stream="kalb" data-mode="mse" title="Media Source Extensions (Empfohlen, läuft über Port 1984)">MSE</button>
-              <button type="button" class="mode-btn" data-stream="kalb" data-mode="webrtc" title="WebRTC (Sub-Sekunden Latenz)">WebRTC</button>
-              <button type="button" class="mode-btn ai-btn" data-stream="kalb" data-mode="ai" title="KI-Erkennung mit Bounding-Boxes (COLO / YOLO Tracking)">🎯 KI Boxen</button>
+              <button type="button" class="mode-btn active" data-stream="kalb" data-mode="mse">MSE</button>
+              <button type="button" class="mode-btn" data-stream="kalb" data-mode="webrtc">WebRTC</button>
+              <button type="button" class="mode-btn ai-btn" data-stream="kalb" data-mode="ai">🎯 KI</button>
             </div>
           </div>
           <div class="video-container">
             <iframe id="stream-kalb" src="" title="Stream Abkalbebox" allow="autoplay; fullscreen"></iframe>
-            <img id="stream-kalb-ai" class="ai-video-feed" src="" alt="KI Tracking Abkalbebox" style="display: none; width: 100%; height: 100%; object-fit: contain; background: #0b0f19;">
-            <div class="video-fallback" id="fallback-kalb">
-              <span>Stream wird geladen...</span>
-            </div>
+            <img id="stream-kalb-ai" src="" alt="KI Tracking" style="display:none; width:100%; height:100%; object-fit:contain; background:#0b0f19;">
+            <div class="video-fallback" id="fallback-kalb"><span>Stream wird geladen…</span></div>
           </div>
-          <div class="stream-info-bar" id="kalb-info-bar" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; font-size: 0.8rem; color: var(--text-muted); background: var(--card-bg); border-top: 1px solid var(--border-color);">
-            <span id="kalb-cows-badge">🐮 Kühe im Stall: --</span>
-            <span id="kalb-model-badge">Modell: --</span>
+          <div class="cow-status-bar" id="cow-status-bar">
+            <span id="cow-count-badge">🐮 --</span>
+            <span id="cow-model-badge">Modell: --</span>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Letzte LKWs / Ereignisse -->
-    <section class="section">
-      <div class="section-header">
-        <div>
-          <h2>Erfasste LKWs</h2>
-          <span class="refresh-hint" id="refresh-status">Aktualisiert alle 15 Sekunden</span>
+    <!-- ===== PAGE: Aufnahmen ===== -->
+    <section class="page hidden" id="page-aufnahmen">
+      <div class="page-header">
+        <h2>LKW-Aufnahmen</h2>
+        <div class="header-actions">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-input" placeholder="Kennzeichen, Firma suchen…" autocomplete="off">
+          </div>
+          <button id="refresh-events-btn" class="btn btn-secondary">🔄 Aktualisieren</button>
         </div>
-        <button id="manual-refresh-btn" class="btn btn-secondary">
-          🔄 Jetzt aktualisieren
-        </button>
       </div>
 
-      <!-- LKW Karten Grid -->
-      <div id="events-grid" class="events-grid">
+      <div id="events-container">
         <div class="loading-state">
           <div class="spinner"></div>
-          <p>Lade Ereignisse...</p>
+          <p>Lade Aufnahmen…</p>
         </div>
       </div>
     </section>
+
+    <!-- ===== PAGE: Abkalben ===== -->
+    <section class="page hidden" id="page-abkalben">
+      <div class="page-header">
+        <h2>Abkalben</h2>
+      </div>
+
+      <div class="placeholder-card">
+        <div class="placeholder-icon">🐄</div>
+        <h3>Abkalbebox Übersicht</h3>
+        <p>Hier werden zukünftig Informationen zum Abkalben angezeigt:</p>
+        <ul class="feature-list">
+          <li>📊 Aktivitätsdiagramm der Kühe (Liegen, Stehen, Bewegung)</li>
+          <li>🔔 Benachrichtigungen bei auffälligem Verhalten</li>
+          <li>📋 Abkalbeprotokoll mit Zeiten und Beobachtungen</li>
+          <li>📈 Auswertungen und Trends über längere Zeiträume</li>
+        </ul>
+        <p class="placeholder-hint">Die Live-Ansicht der Abkalbebox mit KI-Erkennung findest du unter <a href="#live">Live Kameras</a>.</p>
+      </div>
+    </section>
+
   </main>
 
-  <!-- Video Modal / Lightbox -->
+  <!-- Video Modal -->
   <div id="video-modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="modal-backdrop"></div>
     <div class="modal-content">
       <div class="modal-header">
         <div>
           <h3 id="modal-title">LKW-Aufnahme</h3>
-          <p id="modal-subtitle" class="subtitle"></p>
+          <p id="modal-subtitle" class="modal-sub"></p>
         </div>
-        <button id="modal-close" class="modal-close" aria-label="Schließen">&times;</button>
+        <button id="modal-close" class="modal-close-btn" aria-label="Schließen">&times;</button>
       </div>
       <div class="modal-body">
         <video id="modal-video" controls autoplay playsinline preload="metadata">
           <source src="" type="video/mp4">
-          Ihr Browser unterstützt kein HTML5 Video.
         </video>
       </div>
       <div class="modal-footer">
-        <span id="modal-meta-plate" class="plate-badge"></span>
-        <span id="modal-meta-company" class="company-badge"></span>
-        <a id="modal-download-btn" href="#" download class="btn btn-secondary">
-          ⬇ Clip herunterladen
-        </a>
+        <div class="modal-meta">
+          <span id="modal-meta-plate" class="plate-badge"></span>
+          <span id="modal-meta-company" class="company-badge"></span>
+        </div>
+        <div class="modal-actions">
+          <a id="modal-download-btn" href="#" download class="btn btn-secondary">⬇ Download</a>
+          <button id="modal-delete-btn" class="btn btn-danger">🗑 Löschen</button>
+        </div>
       </div>
     </div>
   </div>
