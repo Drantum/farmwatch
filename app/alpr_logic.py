@@ -240,6 +240,7 @@ class PlateVoteCollector:
 
         formatted = format_german_plate(winner_clean, hint_raw=winner_data["hint_raw"])
         avg_confidence = winner_data["score"] / winner_data["count"]
-        snapshot_frame = winner_data["best_frame"] or self.fallback_frame
+        best = winner_data["best_frame"]
+        snapshot_frame = best if best is not None else self.fallback_frame
 
         return formatted, winner_clean, round(avg_confidence, 4), snapshot_frame
