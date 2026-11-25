@@ -172,6 +172,8 @@ class PlateVoteCollector:
         self.votes: Dict[str, Dict[str, Any]] = {}
         self.fallback_frame: Optional[Any] = None
         self.fallback_confidence: float = 0.0
+        # Alle akzeptierten Einzellesungen (Text, Confidence) für die zeichenweise Abstimmung
+        self.readings: List[Tuple[str, float]] = []
 
     def add_detection(
         self,
@@ -213,6 +215,7 @@ class PlateVoteCollector:
         entry = self.votes[cleaned]
         entry["score"] += confidence
         entry["count"] += 1
+        self.readings.append((cleaned, confidence))
 
         # Behalte ein hint_raw mit Bindestrich oder Leerzeichen bevorzugt
         if "-" in raw_text or " " in raw_text:
@@ -227,6 +230,31 @@ class PlateVoteCollector:
         logger.info(f"   [ALPR] Gelesen: '{raw_text}' -> '{cleaned}' | ✅ AKZEPTIERT (Score: {entry['score']:.2f}, Treffer: {entry['count']})")
         return True
 
+    def _char_vote(self) -> Optional[str]:
+        """
+        Zeichenweise, nach Confidence gewichtete Abstimmung über alle gültigen
+        Lesungen gleicher Länge. Gibt das zusammengesetzte Kennzeichen zurück,
+        wenn es ein gültiges deutsches Format hat, sonst None.
+        """
+        if len(self.readings) < 2:
+            return None
+
+        by_len: Dict[int, List[Tuple[str, float]]] = {}
+        for text, conf in self.readings:
+            by_len.setdefault(len(text), []).append((text, conf))
+
+        # Längengruppe mit dem höchsten Gesamtgewicht nehmen
+        group = max(by_len.values(), key=lambda g: sum(c for _, c in g))
+
+        result = ""
+        for i in range(len(group[0][0])):
+            weights: Dict[str, float] = {}
+            for text, conf in group:
+                weights[text[i]] = weights.get(text[i], 0.0) + conf
+            result += max(weights, key=weights.get)
+
+        return result if is_valid_german_plate(result) else None
+
     def get_winner(self) -> Tuple[Optional[str], Optional[str], float, Optional[Any]]:
         """
         Gibt das Ergebnis der gewichteten Abstimmung zurück:
@@ -236,7 +264,27 @@ class PlateVoteCollector:
             return None, None, self.fallback_confidence, self.fallback_frame
 
         winner_clean = max(self.votes.keys(), key=lambda k: self.votes[k]["score"])
-        winner_data = self.votes[winner_clean]
+
+        voted = self._char_vote()
+        if voted and voted != winner_clean:
+            logger.info(f"   [ALPR] Zeichenweise Abstimmung: '{winner_clean}' -> '{voted}'")
+            winner_clean = voted
+
+        winner_data = self.votes.get(winner_clean)
+        if winner_data is None:
+            # Zusammengesetztes Kennzeichen war nie als Ganzes zu sehen:
+            # Bild vom ähnlichsten Einzelergebnis, Confidence aus den Einzellesungen
+            same_len = [k for k in self.votes if len(k) == len(winner_clean)] or list(self.votes)
+            closest = max(
+                same_len,
+                key=lambda k: (sum(a == b for a, b in zip(k, winner_clean)), self.votes[k]["best_conf"]),
+            )
+            src = self.votes[closest]
+            confs = [c for t, c in self.readings if len(t) == len(winner_clean)]
+            avg = sum(confs) / len(confs) if confs else src["score"] / src["count"]
+            best = src["best_frame"]
+            snapshot_frame = best if best is not None else self.fallback_frame
+            return format_german_plate(winner_clean), winner_clean, round(avg, 4), snapshot_frame
 
         formatted = format_german_plate(winner_clean, hint_raw=winner_data["hint_raw"])
         avg_confidence = winner_data["score"] / winner_data["count"]
