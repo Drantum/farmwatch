@@ -1,9 +1,6 @@
-import asyncio
-import logging
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import StreamingResponse
 
-logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/cows", tags=["cows"])
 
 
@@ -18,45 +15,14 @@ async def get_live_annotated_feed(request: Request):
     if not cow_detector:
         raise HTTPException(status_code=503, detail="Kuh-Detektor ist nicht aktiv.")
 
-    async def generate():
-        """Async-Wrapper um den synchronen MJPEG-Generator, damit der Event-Loop nicht blockiert."""
-        while cow_detector.is_running():
-            frame_bytes = cow_detector.get_latest_jpeg()
-            if frame_bytes:
-                yield (
-                    b"--frame\r\n"
-                    b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
-                )
-            await asyncio.sleep(1.0 / max(1.0, cow_detector.target_fps))
-
     return StreamingResponse(
-        generate(),
+        cow_detector.generate_mjpeg(),
         media_type="multipart/x-mixed-replace; boundary=frame",
         headers={
             "Cache-Control": "no-cache, no-store, must-revalidate",
             "Pragma": "no-cache",
             "Expires": "0",
-            "X-Accel-Buffering": "no",
         },
-    )
-
-
-@router.get("/snapshot")
-async def get_snapshot(request: Request):
-    """Liefert ein einzelnes JPEG-Snapshot der annotierten Ansicht."""
-    cow_detector = getattr(request.app.state, "cow_detector", None)
-    if not cow_detector:
-        raise HTTPException(status_code=503, detail="Kuh-Detektor ist nicht aktiv.")
-
-    jpeg = cow_detector.get_latest_jpeg()
-    if not jpeg:
-        raise HTTPException(status_code=503, detail="Noch kein Frame verfügbar.")
-
-    from fastapi.responses import Response
-    return Response(
-        content=jpeg,
-        media_type="image/jpeg",
-        headers={"Cache-Control": "no-cache"},
     )
 
 
