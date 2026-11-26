@@ -34,7 +34,7 @@ class EventManager:
         media_dir: Path,
         seg_dir: Path,
         vision_client: VisionClient,
-        idle_timeout: float = 8.0,
+        idle_timeout: float = 30.0,
         segment_flush_wait: float = 12.0,
         pre_buffer: float = 3.0,
         post_buffer: float = 2.0,

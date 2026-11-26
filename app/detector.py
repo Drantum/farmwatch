@@ -76,7 +76,7 @@ class StreamDetector:
         event_manager: Any,
         target_fps: float = 5.0,
         yolo_model_name: str = "yolov8n.pt",
-        confidence_threshold: float = 0.45,
+        confidence_threshold: float = 0.35,
         device: str = "cpu",
         target_classes: Optional[List[str]] = None,
         alpr_detector_model: str = "yolo-v9-t-384-license-plate-end2end",
