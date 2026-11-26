@@ -76,7 +76,7 @@ class StreamDetector:
         event_manager: Any,
         target_fps: float = 5.0,
         yolo_model_name: str = "yolov8n.pt",
-        confidence_threshold: float = 0.50,
+        confidence_threshold: float = 0.45,
         device: str = "cpu",
         target_classes: Optional[List[str]] = None,
         alpr_detector_model: str = "yolo-v9-t-384-license-plate-end2end",
@@ -90,7 +90,7 @@ class StreamDetector:
         self.yolo_model_name = yolo_model_name
         self.confidence_threshold = confidence_threshold
         self.device = device
-        self.target_classes = [c.lower() for c in (target_classes or ["truck"])]
+        self.target_classes = [c.lower() for c in (target_classes or ["truck", "bus"])]
         self.alpr_detector_model = alpr_detector_model
         self.alpr_ocr_model = alpr_ocr_model
 
@@ -253,7 +253,10 @@ class StreamDetector:
                     truck_detected, truck_conf = self._detect_truck(frame)
                     plates = []
 
-                    if truck_detected and self.alpr is not None:
+                    # Kennzeichen auch lesen, wenn YOLO den LKW kurz verliert,
+                    # solange ein Ereignis läuft
+                    event_active = bool(getattr(self.event_manager, "is_active", False))
+                    if (truck_detected or event_active) and self.alpr is not None:
                         plates = self._detect_plates(frame)
 
                     # An EventManager übergeben

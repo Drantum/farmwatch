@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 import threading
 import time
+from collections import deque
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -23,7 +24,7 @@ class EventManager:
     Steuert den Lebenszyklus von LKW-Ereignissen:
     - Erkennt Start des Ereignisses beim ersten LKW-Frame
     - Sammelt kontinuierlich Kennzeichen und Snapshots
-    - Schließt das Ereignis ab, wenn 8 Sekunden lang kein LKW mehr erkannt wird
+    - Schließt das Ereignis ab, wenn idle_timeout Sekunden lang kein LKW mehr erkannt wird
     - Wartet 12 Sekunden vor dem Schneiden, um alle Segmente zu sichern
     - Schneidet den Clip (3s Vorlauf, 2s Nachlauf) und speichert Snapshot & DB-Eintrag
     """
@@ -40,6 +41,10 @@ class EventManager:
         post_buffer: float = 2.0,
         video_codec: str = "copy",
         alpr_min_confidence: float = 0.35,
+        start_confidence: float = 0.50,
+        confirm_hits: int = 3,
+        confirm_window: float = 4.0,
+        min_event_seconds: float = 6.0,
         **kwargs: Any,
     ):
         self.db = db
@@ -52,6 +57,14 @@ class EventManager:
         self.post_buffer = post_buffer
         self.video_codec = video_codec
         self.alpr_min_confidence = alpr_min_confidence
+        # Start nur, wenn der LKW sicher (start_confidence) und mehrfach
+        # (confirm_hits innerhalb von confirm_window Sekunden) erkannt wurde
+        self.start_confidence = start_confidence
+        self.confirm_hits = confirm_hits
+        self.confirm_window = confirm_window
+        # Kurze Ereignisse ohne Kennzeichen werden verworfen
+        self.min_event_seconds = min_event_seconds
+        self._start_hits: deque = deque()
 
         self._lock = threading.Lock()
         self.is_active: bool = False
@@ -74,18 +87,34 @@ class EventManager:
         ts = timestamp or time.time()
 
         with self._lock:
-            if truck_detected:
-                if not self.is_active:
-                    self.is_active = True
-                    self.start_time = ts
-                    self.vote_collector = PlateVoteCollector(self.alpr_min_confidence)
-                    self.best_truck_frame = None
-                    self.best_truck_conf = 0.0
-                    logger.info(f"🚚 LKW erkannt! Ereignis gestartet um {datetime.fromtimestamp(ts).strftime('%H:%M:%S')}")
+            # Alte Treffer aus dem Bestätigungsfenster entfernen
+            while self._start_hits and ts - self._start_hits[0] > self.confirm_window:
+                self._start_hits.popleft()
 
+            plate_seen = any(
+                float(p.get("confidence", 0.0)) >= self.alpr_min_confidence for p in (plates or [])
+            )
+
+            if not self.is_active:
+                # Start nur bei sicherer, mehrfacher LKW-Erkennung
+                if truck_detected and truck_conf >= self.start_confidence:
+                    self._start_hits.append(ts)
+                if len(self._start_hits) < self.confirm_hits:
+                    return
+
+                self.is_active = True
+                self.start_time = self._start_hits[0]
+                self._start_hits.clear()
+                self.vote_collector = PlateVoteCollector(self.alpr_min_confidence)
+                self.best_truck_frame = None
+                self.best_truck_conf = 0.0
+                logger.info(f"🚚 LKW erkannt! Ereignis gestartet um {datetime.fromtimestamp(self.start_time).strftime('%H:%M:%S')}")
+
+            if truck_detected or plate_seen:
+                # Ein gelesenes Kennzeichen zählt auch als Anwesenheit des LKW
                 self.last_seen_time = ts
 
-                if frame is not None and truck_conf > self.best_truck_conf:
+                if truck_detected and frame is not None and truck_conf > self.best_truck_conf:
                     self.best_truck_conf = truck_conf
                     self.best_truck_frame = frame.copy() if hasattr(frame, "copy") else frame
 
@@ -96,13 +125,12 @@ class EventManager:
                         self.vote_collector.add_detection(raw_text, conf, frame)
 
             else:
-                if self.is_active:
-                    elapsed_without_truck = ts - self.last_seen_time
-                    if elapsed_without_truck >= self.idle_timeout:
-                        logger.info(
-                            f"LKW seit {self.idle_timeout}s nicht mehr im Bild. Ereignis wird abgeschlossen..."
-                        )
-                        self._trigger_finalization()
+                elapsed_without_truck = ts - self.last_seen_time
+                if elapsed_without_truck >= self.idle_timeout:
+                    logger.info(
+                        f"LKW seit {self.idle_timeout}s nicht mehr im Bild. Ereignis wird abgeschlossen..."
+                    )
+                    self._trigger_finalization()
 
     def _trigger_finalization(self) -> None:
         """Kopiert den aktuellen Zustand und stößt die Finalisierung im Hintergrund an."""
@@ -137,6 +165,12 @@ class EventManager:
     ) -> None:
         """Wartet auf das finale 10s Segment und verarbeitet das fertige Ereignis."""
         try:
+            if (end_ts - start_ts) < self.min_event_seconds and not collector.votes:
+                logger.info(
+                    f"Kurzes Ereignis ohne Kennzeichen verworfen (Dauer: {max(0.0, end_ts - start_ts):.1f}s)."
+                )
+                return
+
             logger.info(f"Warte {self.segment_flush_wait}s auf Abschluss des letzten Video-Segments...")
             time.sleep(self.segment_flush_wait)
 
